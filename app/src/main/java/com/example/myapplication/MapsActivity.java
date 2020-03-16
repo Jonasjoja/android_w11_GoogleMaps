@@ -48,7 +48,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() { //Long click map listener
             @Override
-            public void onMapLongClick(LatLng latLng) {
+            public void onMapLongClick(final LatLng latLng) {
                 final MarkerOptions markerOptions = new MarkerOptions(); //Creates marker
                 markerOptions.position(latLng); //Sets pos for marker
                 final EditText taskEditText = new EditText(c); //Edittext with c, context
@@ -58,12 +58,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         .setPositiveButton("Add", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) { //What to do if success
+                                Map<String, Object> location = new HashMap<>();
                                 String title = String.valueOf(taskEditText.getText());
+                                GeoPoint geoPoint = new GeoPoint(latLng.latitude,latLng.longitude);
+                                location.put("title",title);
+                                location.put("position",geoPoint);
                                 markerOptions.title(title);
                                 mMap.addMarker(markerOptions);
-
-                                db.collection(coordinates) // Ref to specific document in firebase
-                                        .add(markerOptions); // Adds the coordinates.
+                                db.collection(coordinates).document().set(location);
                             }
                         })
                         .setNegativeButton("Cancel", null) //Negative button
