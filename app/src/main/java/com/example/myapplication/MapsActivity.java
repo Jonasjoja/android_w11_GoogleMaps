@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
 
 import android.app.AlertDialog;
@@ -8,16 +9,30 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.widget.EditText;
 
+import com.google.android.gms.common.api.GoogleApiActivity;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback { //Callback is bcus it takes time to get the data from google
 
     private GoogleMap mMap;
+    private String coordinates = "coordinates";
+
+    FirebaseFirestore db = FirebaseFirestore.getInstance(); //Instance of firebasefirestore
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +51,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onMapLongClick(LatLng latLng) {
                 final MarkerOptions markerOptions = new MarkerOptions(); //Creates marker
                 markerOptions.position(latLng); //Sets pos for marker
-
                 final EditText taskEditText = new EditText(c); //Edittext with c, context
                 AlertDialog dialog = new AlertDialog.Builder(c) //Dialog builder
                         .setTitle("Enter a name for your mark!")
@@ -47,6 +61,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 String title = String.valueOf(taskEditText.getText());
                                 markerOptions.title(title);
                                 mMap.addMarker(markerOptions);
+
+                                db.collection(coordinates) // Ref to specific document in firebase
+                                        .add(markerOptions); // Adds the coordinates.
                             }
                         })
                         .setNegativeButton("Cancel", null) //Negative button
@@ -55,6 +72,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
     }
+
+    private void readCoordinates() {
+        db.collection(coordinates)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                        for (QueryDocumentSnapshot documentSnapshot : task.getResult()) {
+                            String title = (String) documentSnapshot.get("title");
+                            GeoPoint geoPoint = documentSnapshot.getGeoPoint("position");
+                            LatLng latLng = new LatLng(geoPoint.getLatitude(), geoPoint.getLongitude());
+                            mMap.addMarker(new MarkerOptions().position(latLng).title(title));
+                            //LatLng home = new LatLng();
+                            //mMap.addMarker(new MarkerOptions().position(home).title("Mi casa"));
+
+
+                            //mMap.addMarker(new MarkerOptions().position(latLng).title(title));
+                        }
+                    }
+                });
+    }
+
+
+
 
     /**
      * Manipulates the map once available.
@@ -79,6 +120,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.addMarker(new MarkerOptions().position(home).title("Mi casa"));
 
         setNewMarker(MapsActivity.this); //Calls the set new marker method with this class as context
+        readCoordinates();
     }
 
 }
